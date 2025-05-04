@@ -1,6 +1,6 @@
 # Edits:
 
-The script now gets a folder instead of a file and produces chromatograms from all csv files in subfolders.
+The script now processes a folder instead of a file and produces chromatograms from all csv files in subfolders.
 
 Added `-y` - Specify the y max for all plots to standardise the graphs, for example, `-y600`
 
@@ -11,7 +11,7 @@ Use this script to turn your Akta results file from Unicorn (.csv) into a nicely
 Usage:
 
 ```
-plotakta.py [options] filename.csv
+plotakta.py [options] /path/to/folder/
 ```
 
 ## Getting Started
@@ -42,9 +42,15 @@ plotakta.py [options] filename.csv
 
 * ```-m``` Draw a vertical line at the maximum UV
 
+* ```-y``` Set the Y-axis maximum (e.g. `-y600`)
+
 * ```-h``` Show help message
 
 Options can be combined together without putting a new dash every time (e.g. ***-cbf***)
+
+If there are spaces in your file or folder names, place quotation marks around the whole path, for example
+
+```plotakta.py -bfe "/path/to/folder name/"```
 
 ## Examples
 
