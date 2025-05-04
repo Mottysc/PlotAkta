@@ -261,7 +261,7 @@ def process_file(aktafile, params):
         
     if doConcB and concb_x == -1:
         ## This is a workaround for the case where the column is present but empty
-        
+
         print('\nERROR: No \'Conc B\' (concentration B) column in the CSV file.')
         sys.exit()
         
@@ -290,6 +290,7 @@ def process_file(aktafile, params):
 
     #####################################################        
 
+    # Changed to make the plot more square
     fig,ax = plt.subplots(figsize = (10,5))
 
     if useElutionMark:
