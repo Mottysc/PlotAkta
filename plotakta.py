@@ -43,31 +43,47 @@ def setupParserOptions():
     parser.add_option("-m", "--uvmax",
                   action="store_true", dest="uvmax", default=False,
                   help="Draw a vertical line at the maximum UV value.")
+    parser.add_option("-y", "--ylim", type="int", dest="ylim", default=None,
+                      help="Set upper y-axis limit (e.g. --ylim=600)")
 
     options,args = parser.parse_args()
 
-    if len(args) > 1:
-            parser.error("\nToo many filenames.")
+    if len(args) != 1:
+            parser.error("\nERROR: Only one folder can be processed at a time.")
 
-    if len(args) == 0:
-            parser.error("\nNo filename. Run plotakta.py -h to get the help text.")
-            
-    if len(sys.argv) < 2:
-            parser.print_help()
-            sys.exit()
+    folder_path = args[0]
+    if not os.path.isdir(folder_path):
+        parser.error(f"\nERROR: {folder_path} is not a valid directory.")
 
-    params={}
+    params = {}
 
     for i in parser.option_list:
-            if isinstance(i.dest,str):
-                    params[i.dest] = getattr(options,i.dest)
+        if isinstance(i.dest, str):
+            params[i.dest] = getattr(options, i.dest)
                     
-    params['file'] = args[0]
+    params['folder'] = folder_path
                     
     return(params)
 
-def mainloop(params):
-    
+def process_file(aktafile, params):
+    print(f"Processing file: {aktafile}")
+    # Check if the file exists
+    if not path.exists(aktafile):
+        print(f'\nERROR: {aktafile} does not exist.')
+        return
+
+    aktalst = []
+
+    try:
+        with open(aktafile, newline='', encoding='utf16') as items:
+            readme = csv.reader(items, delimiter='\t')
+            for i in readme:
+                aktalst.append(i)
+    except Exception as e:
+        print(f"ERROR: Could not read file {aktafile}. Error: {e}")
+        return
+
+    aktalst = list(map(list, zip(*aktalst)))
     
     doUV = True
     doCond = params["conductance"]
@@ -91,30 +107,6 @@ def mainloop(params):
     if doDig1 and hideDig1:
         doDig1Label = False        
 
-    aktafile = params["file"]
-
-#Test code from here
-
-    aktafile_exists = path.exists(aktafile)
-
-    if not aktafile_exists:
-
-        print('\nERROR: ' + aktafile + ' does not exist.Run plotakta.py -h to get the help text.')
-
-        sys.exit()
-
-    #####################################################
-
-    aktalst = []
-
-    with open(aktafile, newline = '', encoding = 'utf16') as items:                                                                                          
-        readme = csv.reader(items, delimiter='\t')
-        for i in readme:
-            aktalst.append(i)
-
-    aktalst = list(map(list, zip(*aktalst)))
-
-    #####################################################
 
     def clean(lst):
         lst[:] = [x for x in lst if x]
@@ -267,8 +259,9 @@ def mainloop(params):
         print('\nERROR: No \'Cond\' (conductance) column in the CSV file.')
         sys.exit()
         
-    if doConcB and concb_x == 0:
-
+    if doConcB and concb_x == -1:
+        ## This is a workaround for the case where the column is present but empty
+        
         print('\nERROR: No \'Conc B\' (concentration B) column in the CSV file.')
         sys.exit()
         
@@ -297,7 +290,7 @@ def mainloop(params):
 
     #####################################################        
 
-    fig,ax = plt.subplots(figsize = (20,5))
+    fig,ax = plt.subplots(figsize = (10,5))
 
     if useElutionMark:
 
@@ -318,21 +311,24 @@ def mainloop(params):
     plt.yticks(fontsize = 20, fontname="Arial")
 
     ymins.append(ax.get_ylim()[0])
-    ymaxs.append(ax.get_ylim()[1])
+    if params["ylim"] is not None:
+        ymaxs.append(params["ylim"])
+    else:
+        ymaxs.append(ax.get_ylim()[1])
 
     if doConcB:
+        if concb_x != 0:
+            ax4=ax.twinx()
+            ax4.plot(concb_x, concb_trace, color = 'green', linewidth = 2)
+            ax4.set_ylabel("Concentration B (%)",fontsize=20, color = 'green')
+            ax4.yaxis.set_tick_params(labelsize=20)
+            ax4.set_ylim(0, 100)
 
-        ax4=ax.twinx()
-        ax4.plot(concb_x, concb_trace, color = 'green', linewidth = 2)
-        ax4.set_ylabel("Concentration B (%)",fontsize=20, color = 'green')
-        ax4.yaxis.set_tick_params(labelsize=20)
-        ax4.set_ylim(0, 100)
-
-        if doCond:
-            ax4.spines["right"].set_position(("axes", 1.1))
-            
-        ymins.append(ax4.get_ylim()[0])
-        ymaxs.append(ax4.get_ylim()[1])
+            if doCond:
+                ax4.spines["right"].set_position(("axes", 1.1))
+                
+            ymins.append(ax4.get_ylim()[0])
+            ymaxs.append(ax4.get_ylim()[1])
 
     if doUV260:
 
@@ -357,7 +353,10 @@ def mainloop(params):
     ##############
 
     ymin = np.amin(ymins)
-    ymax = np.amax(ymaxs)
+    if params["ylim"] is not None:
+        ymax = params["ylim"]
+    else:
+        ymax = np.amax(ymaxs)
 
     if doLog:
 
@@ -367,7 +366,7 @@ def mainloop(params):
 
                 if lx > np.amin(dig1lab_x) and lx < np.amax(dig1lab_x):
 
-                    ax.text(lx, int(np.amax(uv_trace)*0.7), lt, fontsize=12, rotation = 90,
+                    ax.text(lx, int(np.amax(uv_trace)*0.7), lt, fontsize=8, rotation = 90,
                              horizontalalignment='center', fontname="Arial", color = 'r', alpha = 0.6)
 
                     ax.plot([lx, lx], [ymin,np.amax(uv_trace)*0.66], '-',
@@ -377,7 +376,7 @@ def mainloop(params):
 
                 if lx > log_x[log_text.index('Elution')] and lx < np.amax(frac_x):
 
-                    ax.text(lx, int(np.amax(uv_trace)*0.7), lt, fontsize=12, rotation = 90,
+                    ax.text(lx, int(np.amax(uv_trace)*0.7), lt, fontsize=5, rotation = 90,
                              horizontalalignment='center', fontname="Arial", color = 'r', alpha = 0.6)
 
                     ax.plot([lx, lx], [ymin,np.amax(uv_trace)*0.66], '-',
@@ -387,7 +386,7 @@ def mainloop(params):
 
                 if lx > np.amin(frac_x) and lx < np.amax(frac_x):
 
-                    ax.text(lx, int(np.amax(uv_trace)*0.7), lt, fontsize=12, rotation = 90,
+                    ax.text(lx, int(np.amax(uv_trace)*0.7), lt, fontsize=5, rotation = 90,
                              horizontalalignment='center', fontname="Arial", color = 'r', alpha = 0.6)
 
                     ax.plot([lx, lx], [ymin,np.amax(uv_trace)*0.66], '-',
@@ -395,7 +394,7 @@ def mainloop(params):
 
             else:
 
-                ax.text(lx, int(np.amax(uv_trace)*0.7), lt, fontsize=12, rotation = 90,
+                ax.text(lx, int(np.amax(uv_trace)*0.7), lt, fontsize=5, rotation = 90,
                          horizontalalignment='center', fontname="Arial", color = 'r', alpha = 0.6)
 
                 ax.plot([lx, lx], [ymin,np.amax(uv_trace)*0.66], '-',
@@ -428,7 +427,7 @@ def mainloop(params):
 
                     if dx < uv_x[-1]:
 
-                        ax2.text(dfx, 0.33, df, fontsize=15, rotation = 90,
+                        ax2.text(dfx, 0.33, df, fontsize=6, rotation = 90,
                         horizontalalignment='center', fontname="Arial", color = 'k', alpha = 0.6)
 
                         ax2.plot([dx, dx], [0,1], '--', color = 'k', alpha = 0.6, linewidth = 1)
@@ -455,7 +454,12 @@ def mainloop(params):
         maxpos = uv_trace.index(max(uv_trace))
         maxvol = uv_x[maxpos]
 
-        ax.plot([maxvol, maxvol], [ymin, np.amax(uv_trace)], color = 'orange', linewidth = 1.5)
+        if params["ylim"] is not None:
+            ylim_param = params["ylim"]
+        else:
+            ylim_param = np.amax(uv_trace)
+            
+        ax.plot([maxvol, maxvol], [ymin, ylim_param], color = 'orange', linewidth = 1.5)
 
     if doFracs:
 
@@ -471,7 +475,7 @@ def mainloop(params):
 
                 if fx > log_x[log_text.index('Elution')]:
 
-                    ax.text(fxl, int(np.amax(uv_trace)/8), ff, fontsize=15, rotation = 90,
+                    ax.text(fxl, int(np.amax(uv_trace)/8), ff, fontsize=8, rotation = 90,
                              horizontalalignment='center', fontname="Arial", color = 'k', alpha = 0.6)
 
                     ax.plot([fx, fx], [ymin, ymax], '--', color = 'k', alpha = 0.6, linewidth = 1)
@@ -528,16 +532,18 @@ def mainloop(params):
     plt.savefig(aktafile[:-4]+'.pdf')
     plt.savefig(aktafile[:-4]+'.png', dpi=300)
 
-    plt.show()
-
-    plt.ion()
-
     print('\nOutput: ' + aktafile[:-4] + '.pdf and .png')
 
-#Test code ends here
-    
-    sys.exit()
-    
+
+def mainloop(params):
+    folder_path = params["folder"]
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            if file.endswith(".csv"):
+                aktafile = path.join(root, file)
+                process_file(aktafile, params)
+
+
 if __name__ == "__main__":
     params = setupParserOptions()
     mainloop(params)

@@ -1,3 +1,9 @@
+# Edits:
+
+The script now gets a folder instead of a file, and produces chromatograms from all csv files in subfolders.
+
+Added `-y` - Specify the y max for all plots, to standardise the graphs, for example, `-y600`
+
 # Plot Akta Results
 
 Use this script to turn your Akta results file from Unicorn (.csv) into a nicely formatted pdf and png. It will plot the UV-280 trace, but additional data can be overlaid (see below).
