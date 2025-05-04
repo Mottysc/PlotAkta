@@ -1,8 +1,8 @@
 # Edits:
 
-The script now gets a folder instead of a file, and produces chromatograms from all csv files in subfolders.
+The script now gets a folder instead of a file and produces chromatograms from all csv files in subfolders.
 
-Added `-y` - Specify the y max for all plots, to standardise the graphs, for example, `-y600`
+Added `-y` - Specify the y max for all plots to standardise the graphs, for example, `-y600`
 
 # Plot Akta Results
 
